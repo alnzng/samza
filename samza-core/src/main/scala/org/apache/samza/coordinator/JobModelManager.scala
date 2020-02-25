@@ -42,13 +42,14 @@ import org.apache.samza.job.model.ContainerModel
 import org.apache.samza.job.model.JobModel
 import org.apache.samza.job.model.TaskMode
 import org.apache.samza.job.model.TaskModel
+import org.apache.samza.lineage.{LineageFactory, LineageReporterFactory}
 import org.apache.samza.metadatastore.MetadataStore
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.runtime.LocationId
 import org.apache.samza.system._
 import org.apache.samza.util.ScalaJavaUtil.JavaOptionals
-import org.apache.samza.util.{ConfigUtil, Logging, ReflectionUtil, Util}
+import org.apache.samza.util.{ConfigUtil, JobLineageEmitter, Logging, ReflectionUtil, Util}
 
 import scala.collection.JavaConverters
 import scala.collection.JavaConversions._
@@ -410,6 +411,9 @@ object JobModelManager extends Logging {
     } else {
       containerModels = taskNameGrouperProxy.group(taskModels, new util.ArrayList[String](grouperMetadata.getProcessorLocality.keySet()))
     }
+
+    // emit job lineage data to the configured output stream
+    JobLineageEmitter.emit(config)
 
     val containerMap = containerModels.asScala.map(containerModel => containerModel.getId -> containerModel).toMap
     new JobModel(config, containerMap.asJava)

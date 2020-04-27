@@ -26,12 +26,14 @@ import org.apache.samza.application.ApplicationUtil;
 import org.apache.samza.application.descriptors.ApplicationDescriptor;
 import org.apache.samza.application.descriptors.ApplicationDescriptorImpl;
 import org.apache.samza.application.descriptors.ApplicationDescriptorUtil;
+import org.apache.samza.classloader.IsolatingClassLoaderFactory;
 import org.apache.samza.config.Config;
 import org.apache.samza.config.JobConfig;
 import org.apache.samza.config.ShellCommandConfig;
 import org.apache.samza.container.SamzaContainer;
 import org.apache.samza.job.model.JobModel;
 import org.apache.samza.util.SamzaUncaughtExceptionHandler;
+import org.apache.samza.util.SplitDeploymentUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,13 +44,25 @@ import org.slf4j.LoggerFactory;
 public class LocalContainerRunner {
   private static final Logger log = LoggerFactory.getLogger(LocalContainerRunner.class);
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     Thread.setDefaultUncaughtExceptionHandler(
         new SamzaUncaughtExceptionHandler(() -> {
           log.info("Exiting process now.");
           System.exit(1);
         }));
+    if (SplitDeploymentUtil.isSplitDeploymentEnabled()) {
+      SplitDeploymentUtil.runWithClassLoader(new IsolatingClassLoaderFactory().buildClassLoader(),
+          LocalContainerRunner.class, "runLocalContainer", args);
+    } else {
+      runLocalContainer(args);
+    }
+  }
 
+  /**
+   * This is the actual execution for the {@link LocalContainerRunner}. This is separated out from
+   * {@link #main(String[])} so that it can be executed directly or from a separate classloader.
+   */
+  private static void runLocalContainer(String[] args) {
     String containerId = System.getenv(ShellCommandConfig.ENV_CONTAINER_ID);
     log.info(String.format("Got container ID: %s", containerId));
     System.out.println(String.format("Container ID: %s", containerId));
